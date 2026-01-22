@@ -44,14 +44,19 @@ def create_bucket():
 # DELETE BUCKET
 @app.route("/bucket/delete", methods=["POST"])
 def delete_bucket():
-    bucket_name = request.json.get("bucket")
-    if not s3_utils.bucket_exists(bucket_name):
-        return jsonify(error="Bucket does not exist"), 404
     try:
+        bucket_name = request.json.get("bucket")
+
+        if not bucket_name:
+            return jsonify({"error": "Bucket name is required"}), 400
+
         s3_utils.delete_bucket(bucket_name)
-        return jsonify(message="Bucket deleted")
-    except ClientError as e:
-        return jsonify(error=str(e)), 400
+        return jsonify({"message": "Bucket deleted successfully"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 
 # CREATE FOLDER
 @app.route("/folder/create", methods=["POST"])

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>S3 File Manager</title>
-    <link rel="stylesheet" href="static/style.css">
+   <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 
@@ -72,23 +72,50 @@
 </section>
 
 <script>
+/* -------------------- UTILITY -------------------- */
 function displayMessage(id, msg, success = true) {
     const el = document.getElementById(id);
+
     el.textContent = msg;
     el.className = 'message ' + (success ? 'success' : 'error');
+
+    // Auto clear after 4 seconds
+    setTimeout(() => {
+        el.textContent = '';
+        el.className = 'message';
+    }, 4000);
 }
+
 
 function handleResponse(id) {
-    return res => res.json().then(data => {
-        if (data.error) {
-            displayMessage(id,+ data.error, false);
-        } else if (data.message) {
-            displayMessage(id,+ data.message, true);
+    return async (res) => {
+        let data = {};
+
+        try {
+            data = await res.json();
+        } catch (e) {
+            displayMessage(id, "❌ Server returned an invalid response", false);
+            return;
         }
-        return data;
-    }).catch(() => displayMessage(id, "Unknown error", false));
+
+        // Handle HTTP errors properly
+        if (!res.ok) {
+            displayMessage(
+                id,
+                "❌ " + (data.error || "Operation failed"),
+                false
+            );
+            return;
+        }
+
+        // Success message
+        if (data.message) {
+            displayMessage(id, "✅ " + data.message, true);
+        }
+    };
 }
 
+/* -------------------- BUCKET -------------------- */
 function listBuckets() {
     fetch('/buckets')
         .then(res => res.json())
@@ -128,6 +155,7 @@ function deleteBucket() {
     }).then(handleResponse('bucketOpMessage'));
 }
 
+/* -------------------- FOLDER -------------------- */
 function createFolder() {
     fetch('/folder/create', {
         method: 'POST',
@@ -150,6 +178,7 @@ function deleteFolder() {
     }).then(handleResponse('folderMessage'));
 }
 
+/* -------------------- FILE -------------------- */
 function uploadFile() {
     const formData = new FormData();
     formData.append('bucket', document.getElementById('fileBucket').value);
@@ -171,6 +200,7 @@ function deleteFile() {
     }).then(handleResponse('fileMessage'));
 }
 
+/* -------------------- COPY / MOVE -------------------- */
 function copyFile() {
     fetch('/copy', {
         method: 'POST',
@@ -197,6 +227,7 @@ function moveFile() {
     }).then(handleResponse('copyMoveMessage'));
 }
 
+/* -------------------- LIST OBJECTS -------------------- */
 function listObjects() {
     const bucket = document.getElementById('listBucket').value;
     fetch(`/objects?bucket=${bucket}`)
@@ -214,12 +245,12 @@ function listObjects() {
             }
             data.folders.forEach(f => {
                 const li = document.createElement('li');
-                li.textContent = `${f}`;
+                li.textContent = `📁 ${f}`;
                 ul.appendChild(li);
             });
             data.files.forEach(f => {
                 const li = document.createElement('li');
-                li.textContent = `${f}`;
+                li.textContent = `📄 ${f}`;
                 ul.appendChild(li);
             });
             displayMessage('objectMessage', "Objects listed successfully");

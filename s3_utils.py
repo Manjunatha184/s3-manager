@@ -44,7 +44,25 @@ def create_bucket(bucket_name, region="ap-south-1"):
         raise Exception(e.response["Error"]["Message"])
 
 def delete_bucket(bucket_name):
-    s3.delete_bucket(Bucket=bucket_name)
+    try:
+        # Check bucket exists
+        s3.head_bucket(Bucket=bucket_name)
+
+        # Check if bucket is empty
+        response = s3.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
+        if "Contents" in response:
+            raise Exception("Bucket is not empty")
+
+        # Delete bucket
+        s3.delete_bucket(Bucket=bucket_name)
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code == "404":
+            raise Exception("Bucket does not exist")
+        else:
+            raise Exception(e.response["Error"]["Message"])
+
 
 
 
@@ -70,7 +88,6 @@ def delete_folder(bucket_name, folder_name):
         )
 
 def upload_file(bucket_name, file, key):
-    # Extract folder from key
     folder_prefix = "/".join(key.split("/")[:-1])
     if folder_prefix and not folder_exists(bucket_name, folder_prefix):
         raise Exception(f"Folder '{folder_prefix}' does not exist in bucket '{bucket_name}'")
@@ -85,8 +102,7 @@ def delete_file(bucket_name, key):
 def copy_file(src_bucket, src_key, dest_bucket, dest_key):
     if not object_exists(src_bucket, src_key):
         raise Exception(f"Source file '{src_key}' does not exist in bucket '{src_bucket}'")
-    
-    # Check destination folder exists
+    # Check destination folder exist  
     dest_folder = "/".join(dest_key.split("/")[:-1])
     if dest_folder and not folder_exists(dest_bucket, dest_folder):
         raise Exception(f"Destination folder '{dest_folder}' does not exist in bucket '{dest_bucket}'")

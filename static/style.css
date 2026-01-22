@@ -1,65 +1,117 @@
+/* ---------- Base ---------- */
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: #f0bcbc;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #2ca058;
+    color: #222;
 }
 
 h1 {
-    text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
+    font-size: 33px;
+    font-weight: 600;
+    color: white;
+    justify-self: center;
 }
 
+/* ---------- Grid Layout ---------- */
+body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+/* Make header span full width */
+h1 {
+    grid-column: 1 / -1;
+}
+
+/* ---------- Section Cards ---------- */
 section {
-    background-color: #ffffff;
-    border: 1px solid #ddd;
-    padding: 15px;
-    margin: 15px auto;
-    max-width: 500px;
-    border-radius: 4px;
+    background: #57df8b;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
+/* ---------- Titles ---------- */
 h2 {
-    margin-top: 0;
-    font-size: 18px;
-    text-align: center;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid #e5e5e5;
+    padding-bottom: 6px;
 }
 
+/* ---------- Inputs ---------- */
 input[type="text"],
 input[type="file"] {
+    padding: 6px 8px;
+    font-size: 13px;
+    border: 1px solid #cfcfcf;
+    border-radius: 4px;
     width: 100%;
-    padding: 6px;
-    margin-top: 5px;
-    margin-bottom: 8px;
     box-sizing: border-box;
 }
 
+input::placeholder {
+    color: #888;
+}
+
+/* ---------- Buttons ---------- */
 button {
     padding: 6px 10px;
-    margin: 5px 2px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #cfcfcf;
+    background: #f2f2f2;
     cursor: pointer;
 }
 
+button:hover {
+    background: #e6e6e6;
+}
+
+/* Keep buttons compact */
+section button {
+    width: fit-content;
+}
+
+/* ---------- Lists ---------- */
 ul {
-    list-style-type: none;
-    padding-left: 0;
-    margin-top: 10px;
+    list-style: none;
+    padding: 0;
+    margin: 4px 0;
+    font-size: 13px;
+    max-height: 120px;
+    overflow-y: auto;
 }
 
 li {
     padding: 3px 0;
+    border-bottom: 1px solid #efefef;
 }
 
+/* ---------- Messages ---------- */
 .message {
-    margin-top: 8px;
-    font-weight: bold;
-    text-align: center;
+    margin-top: auto;
+    font-size: 12px;
+    padding: 6px;
+    border-radius: 4px;
 }
 
 .success {
-    color: green;
+    color: #155724;
+    background: #e6f4ea;
+    border: 1px solid #c3e6cb;
 }
 
 .error {
-    color: red;
+    color: #721c24;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
 }
