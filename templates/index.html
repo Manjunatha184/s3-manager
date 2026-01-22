@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>S3 File Manager</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+
+<h1>S3 File Manager</h1>
+
+
+<section>
+    <h2>List S3 Buckets</h2>
+    <button onclick="listBuckets()">List Buckets</button>
+    <ul id="bucketList"></ul>
+    <div id="bucketMessage" class="message"></div>
+</section>
+
+
+<section>
+    <h2>List Bucket Contents</h2>
+    <input type="text" id="listBucket" placeholder="Bucket name">
+    <button onclick="listObjects()">List Objects</button>
+    <ul id="objectList"></ul>
+    <div id="objectMessage" class="message"></div>
+</section>
+
+<section>
+    <h2>Create / Delete Bucket</h2>
+    <input type="text" id="bucketName" placeholder="Bucket name">
+    <br>
+    <button onclick="createBucket()">Create Bucket</button>
+    <button onclick="deleteBucket()">Delete Bucket</button>
+    <div id="bucketOpMessage" class="message"></div>
+</section>
+
+<section>
+    <h2>Create / Delete Folder</h2>
+    <input type="text" id="folderBucket" placeholder="Bucket name">
+    <input type="text" id="folderName" placeholder="Folder name">
+    <br>
+    <button onclick="createFolder()">Create Folder</button>
+    <button onclick="deleteFolder()">Delete Folder</button>
+    <div id="folderMessage" class="message"></div>
+</section>
+
+
+<section>
+    <h2>Upload / Delete File</h2>
+    <input type="text" id="fileBucket" placeholder="Bucket name">
+    <input type="text" id="fileKey" placeholder="File key (path/name)">
+    <input type="file" id="uploadFile">
+    <br>
+    <button onclick="uploadFile()">Upload File</button>
+    <button onclick="deleteFile()">Delete File</button>
+    <div id="fileMessage" class="message"></div>
+</section>
+
+
+<section>
+    <h2>Copy / Move File</h2>
+    <input type="text" id="srcBucket" placeholder="Source bucket">
+    <input type="text" id="srcKey" placeholder="Source key">
+    <br><br>
+    <input type="text" id="destBucket" placeholder="Destination bucket">
+    <input type="text" id="destKey" placeholder="Destination key">
+    <br>
+    <button onclick="copyFile()">Copy File</button>
+    <button onclick="moveFile()">Move File</button>
+    <div id="copyMoveMessage" class="message"></div>
+</section>
+
+<script>
+function displayMessage(id, msg, success = true) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'message ' + (success ? 'success' : 'error');
+}
+
+function handleResponse(id) {
+    return res => res.json().then(data => {
+        if (data.error) {
+            displayMessage(id,+ data.error, false);
+        } else if (data.message) {
+            displayMessage(id,+ data.message, true);
+        }
+        return data;
+    }).catch(() => displayMessage(id, "Unknown error", false));
+}
+
+function listBuckets() {
+    fetch('/buckets')
+        .then(res => res.json())
+        .then(data => {
+            const ul = document.getElementById('bucketList');
+            ul.innerHTML = '';
+            if (data.error) {
+                displayMessage('bucketMessage', data.error, false);
+                return;
+            }
+            if (data.length === 0) {
+                displayMessage('bucketMessage', "No buckets found", false);
+                return;
+            }
+            data.forEach(bucket => {
+                const li = document.createElement('li');
+                li.textContent = bucket;
+                ul.appendChild(li);
+            });
+            displayMessage('bucketMessage', "Buckets listed successfully");
+        });
+}
+
+function createBucket() {
+    fetch('/bucket/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({bucket: document.getElementById('bucketName').value})
+    }).then(handleResponse('bucketOpMessage'));
+}
+
+function deleteBucket() {
+    fetch('/bucket/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({bucket: document.getElementById('bucketName').value})
+    }).then(handleResponse('bucketOpMessage'));
+}
+
+function createFolder() {
+    fetch('/folder/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            bucket: document.getElementById('folderBucket').value,
+            folder: document.getElementById('folderName').value
+        })
+    }).then(handleResponse('folderMessage'));
+}
+
+function deleteFolder() {
+    fetch('/folder/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            bucket: document.getElementById('folderBucket').value,
+            folder: document.getElementById('folderName').value
+        })
+    }).then(handleResponse('folderMessage'));
+}
+
+function uploadFile() {
+    const formData = new FormData();
+    formData.append('bucket', document.getElementById('fileBucket').value);
+    formData.append('key', document.getElementById('fileKey').value);
+    formData.append('file', document.getElementById('uploadFile').files[0]);
+
+    fetch('/upload', { method: 'POST', body: formData })
+        .then(handleResponse('fileMessage'));
+}
+
+function deleteFile() {
+    fetch('/file/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            bucket: document.getElementById('fileBucket').value,
+            key: document.getElementById('fileKey').value
+        })
+    }).then(handleResponse('fileMessage'));
+}
+
+function copyFile() {
+    fetch('/copy', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            src_bucket: document.getElementById('srcBucket').value,
+            src_key: document.getElementById('srcKey').value,
+            dest_bucket: document.getElementById('destBucket').value,
+            dest_key: document.getElementById('destKey').value
+        })
+    }).then(handleResponse('copyMoveMessage'));
+}
+
+function moveFile() {
+    fetch('/move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            src_bucket: document.getElementById('srcBucket').value,
+            src_key: document.getElementById('srcKey').value,
+            dest_bucket: document.getElementById('destBucket').value,
+            dest_key: document.getElementById('destKey').value
+        })
+    }).then(handleResponse('copyMoveMessage'));
+}
+
+function listObjects() {
+    const bucket = document.getElementById('listBucket').value;
+    fetch(`/objects?bucket=${bucket}`)
+        .then(res => res.json())
+        .then(data => {
+            const ul = document.getElementById('objectList');
+            ul.innerHTML = '';
+            if (data.error) {
+                displayMessage('objectMessage', data.error, false);
+                return;
+            }
+            if ((!data.folders || data.folders.length === 0) && (!data.files || data.files.length === 0)) {
+                displayMessage('objectMessage', "No objects found", false);
+                return;
+            }
+            data.folders.forEach(f => {
+                const li = document.createElement('li');
+                li.textContent = `${f}`;
+                ul.appendChild(li);
+            });
+            data.files.forEach(f => {
+                const li = document.createElement('li');
+                li.textContent = `${f}`;
+                ul.appendChild(li);
+            });
+            displayMessage('objectMessage', "Objects listed successfully");
+        });
+}
+</script>
+
+</body>
+</html>
