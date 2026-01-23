@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect
 from botocore.exceptions import ClientError
 import s3_utils
 
@@ -14,7 +14,7 @@ def get_buckets():
     try:
         buckets = s3_utils.list_buckets()
         return jsonify(buckets)
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 500
 
 # LIST OBJECTS IN BUCKET
@@ -33,12 +33,11 @@ def create_bucket():
     bucket_name = request.json.get("bucket")
     if not bucket_name:
         return jsonify(error="Bucket name required"), 400
-    if s3_utils.bucket_exists(bucket_name):
-        return jsonify(error="Bucket already exists"), 400
+    
     try:
         s3_utils.create_bucket(bucket_name)
         return jsonify(message="Bucket created successfully"), 201
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
 
 # DELETE BUCKET
@@ -70,7 +69,7 @@ def create_folder():
     try:
         s3_utils.create_folder(bucket, folder)
         return jsonify(message="Folder created")
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
 
 # DELETE FOLDER
@@ -88,7 +87,7 @@ def delete_folder():
     try:
         s3_utils.delete_folder(bucket, folder)
         return jsonify(message="Folder deleted")
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
 
 # UPLOAD FILE
@@ -104,7 +103,7 @@ def upload():
     try:
         s3_utils.upload_file(bucket, file, key)
         return jsonify(message="File uploaded")
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
 
 # DELETE FILE
@@ -121,7 +120,7 @@ def delete_file():
     try:
         s3_utils.delete_file(bucket, key)
         return jsonify(message="File deleted")
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
 
 # COPY FILE
@@ -142,7 +141,7 @@ def copy():
     try:
         s3_utils.copy_file(src_bucket, src_key, dest_bucket, dest_key)
         return jsonify(message="File copied")
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
 
 # MOVE FILE
@@ -163,8 +162,52 @@ def move():
     try:
         s3_utils.move_file(src_bucket, src_key, dest_bucket, dest_key)
         return jsonify(message="File moved")
-    except ClientError as e:
+    except Exception as e:
         return jsonify(error=str(e)), 400
+
+# DOWNLOAD FILE
+@app.route("/download", methods=["GET"])
+def download():
+    bucket = request.args.get("bucket")
+    key = request.args.get("key")
+    if not bucket or not key:
+        return jsonify(error="Bucket and key required"), 400
+    if not s3_utils.bucket_exists(bucket):
+        return jsonify(error="Bucket does not exist"), 404
+    if not s3_utils.object_exists(bucket, key):
+        return jsonify(error="File does not exist"), 404
+    try:
+        url = s3_utils.get_download_url(bucket, key)
+        return redirect(url)
+    except Exception as e:
+        return jsonify(error=str(e)), 400
+
+# CHECK AWS STATUS
+@app.route("/status", methods=["GET"])
+def status():
+    import boto3
+    session = boto3.session.Session()
+    region = session.region_name
+    creds = session.get_credentials()
+    
+    if not creds:
+        return jsonify({"status": "not_configured", "error": "No AWS credentials found"})
+    
+    try:
+        # Try to list buckets to check permissions
+        s3_utils.list_buckets()
+        return jsonify({
+            "status": "configured", 
+            "region": region,
+            "access_key": creds.access_key[:8] + "..." if creds.access_key else None
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error", 
+            "error": str(e),
+            "region": region,
+            "access_key": creds.access_key[:8] + "..." if creds.access_key else None
+        })
 
 
 if __name__ == "__main__":

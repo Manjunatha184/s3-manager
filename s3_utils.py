@@ -1,7 +1,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
-s3 = boto3.client("s3")
+region = boto3.session.Session().region_name or 'us-east-1'
+s3 = boto3.client("s3", region_name=region)
 
 
 def list_buckets():
@@ -32,28 +33,28 @@ def list_objects(bucket_name, prefix=""):
 
 
 
-def create_bucket(bucket_name, region="ap-south-1"):
+def create_bucket(bucket_name):
     try:
-        s3.create_bucket(
-            Bucket=bucket_name,
-            CreateBucketConfiguration={
-                "LocationConstraint": region
-            }
-        )
+        if region == 'us-east-1':
+            s3.create_bucket(Bucket=bucket_name)
+        else:
+            s3.create_bucket(
+                Bucket=bucket_name,
+                CreateBucketConfiguration={
+                    "LocationConstraint": region
+                }
+            )
     except ClientError as e:
         raise Exception(e.response["Error"]["Message"])
 
 def delete_bucket(bucket_name):
     try:
-        # Check bucket exists
         s3.head_bucket(Bucket=bucket_name)
 
-        # Check if bucket is empty
         response = s3.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
         if "Contents" in response:
             raise Exception("Bucket is not empty")
 
-        # Delete bucket
         s3.delete_bucket(Bucket=bucket_name)
 
     except ClientError as e:
@@ -88,9 +89,6 @@ def delete_folder(bucket_name, folder_name):
         )
 
 def upload_file(bucket_name, file, key):
-    folder_prefix = "/".join(key.split("/")[:-1])
-    if folder_prefix and not folder_exists(bucket_name, folder_prefix):
-        raise Exception(f"Folder '{folder_prefix}' does not exist in bucket '{bucket_name}'")
     s3.upload_fileobj(file, bucket_name, key)
 
 
@@ -102,11 +100,6 @@ def delete_file(bucket_name, key):
 def copy_file(src_bucket, src_key, dest_bucket, dest_key):
     if not object_exists(src_bucket, src_key):
         raise Exception(f"Source file '{src_key}' does not exist in bucket '{src_bucket}'")
-    # Check destination folder exist  
-    dest_folder = "/".join(dest_key.split("/")[:-1])
-    if dest_folder and not folder_exists(dest_bucket, dest_folder):
-        raise Exception(f"Destination folder '{dest_folder}' does not exist in bucket '{dest_bucket}'")
-
     copy_source = {"Bucket": src_bucket, "Key": src_key}
     s3.copy_object(CopySource=copy_source, Bucket=dest_bucket, Key=dest_key)
 
@@ -140,3 +133,15 @@ def object_exists(bucket, key):
         return True
     except ClientError:
         return False
+
+
+def get_download_url(bucket, key, expiration=3600):
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=expiration
+        )
+        return url
+    except ClientError as e:
+        raise Exception(e.response["Error"]["Message"])
